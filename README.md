@@ -1,6 +1,6 @@
 # GTA SA Checklist
 
-Checklist du 100 % de GTA San Andreas (PC) avec une carte interactive. Elle lit ta progression directement dans le jeu.
+Checklist du 100 % de GTA San Andreas (PC) avec une carte interactive. Elle lit la progression directement dans le jeu.
 
 ## Lancer
 
@@ -44,12 +44,6 @@ Les données de l'appli sont dans `%APPDATA%\GTASA_Checklist` :
 | `tags.json` | positions des tags relevées en jeu |
 | `addresses.json` | adresses mémoire trouvées pour ta version du jeu |
 
-## Limites connues
-
-- Les cinématiques de Catalina (First Base, Gone Courting, Made in Heaven) ne sont pas des missions dans les scripts du jeu. Elles sont déduites du nombre de braquages terminés.
-- Les positions des contacts de mission sont approximatives. Celles des collectibles et des sauts sont exactes.
-- Avec un `main.scm` modifié (gros mods de missions), la détection des missions peut être fausse.
-- Si le jeu est lancé en administrateur, l'appli doit l'être aussi pour lire sa mémoire.
 
 ## Sources
 
