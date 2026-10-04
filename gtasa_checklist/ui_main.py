@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QDialogButtonBo
                                QVBoxLayout, QWidget)
 
 from . import APP_NAME, __version__, gamefiles
-from .catalog import Item, all_items, build_catalog
+from .catalog import EXPORT_LISTS, Item, all_items, build_catalog
 from .model import COLLECT_TOTALS, Snapshot
 from .rules import CollectState, compute_collectibles, evaluate
 from .source import SourceController
@@ -26,7 +26,8 @@ INTERIOR_Z = 500.0
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, game_dir: str | None, map_path: str | None, known: dict):
+    def __init__(self, game_dir: str | None, map_path: str | None, known: dict,
+                 spawns: dict | None = None):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} {__version__}")
         self.resize(1500, 900)
@@ -35,6 +36,11 @@ class MainWindow(QMainWindow):
         self.tag_positions: list = gamefiles.load_json("tags.json", [])
         self.game_dir = game_dir
         self.known = known
+        # spawns des véhicules d'export, indexés par id d'élément (e_<liste>_<n>)
+        spawns = spawns or {}
+        self.export_spawns = {f"e_{li}_{si}": spawns.get(model, [])
+                              for li, vehicles in enumerate(EXPORT_LISTS)
+                              for si, (_name, model) in enumerate(vehicles)}
         self.cats = build_catalog()
         self.items = all_items(self.cats)
         self.snap: Snapshot | None = None
@@ -50,7 +56,8 @@ class MainWindow(QMainWindow):
         self.source.worker.game_dir = game_dir
         self.source.worker.snapshot.connect(self.on_snapshot)
         self.source.worker.status.connect(self.on_status)
-        if self.settings.get("source_mode") == "save" and self.settings.get("save_path"):
+        if self.settings.get("source_mode") == "save" and self.settings.get("save_path") \
+                and Path(self.settings["save_path"]).exists():
             self.source.worker.mode = "save"
             self.source.worker.save_path = Path(self.settings["save_path"])
         self.source.start()
@@ -355,6 +362,21 @@ class MainWindow(QMainWindow):
             entries.append((s.x, s.y, tip, s.done))
         self.map.set_markers("stunts", entries)
         # Lieux des missions et activités (regroupés par position)
+        # Véhicules d'export : un point par emplacement de spawn
+        entries = []
+        by_id = {it.id: it for it in self.items}
+        for item_id, spots in self.export_spawns.items():
+            it = by_id[item_id]
+            done = self.effective(it)
+            for n, (x, y, z, source) in enumerate(spots):
+                lines = [f"{it.name} — {it.group} — {'livré' if done else 'à livrer'}",
+                         f"Point de spawn {n + 1}/{len(spots)}",
+                         "Garé en permanence" if source == "carte"
+                         else "Garé par le script (peut dépendre de la progression)",
+                         f"X {x:.0f}  Y {y:.0f}  Z {z:.0f}"]
+                entries.append((x, y, "\n".join(lines), done))
+        self.map.set_markers("exports", entries)
+
         cat_names = {c.id: c.name for c in self.cats}
         by_pos: dict[tuple, list[Item]] = defaultdict(list)
         for it in self.items:
@@ -430,7 +452,11 @@ class MainWindow(QMainWindow):
     def on_item_clicked(self, node: QTreeWidgetItem, _col: int):
         item_id = node.data(0, ROLE_ITEM)
         it = next((i for i in self.items if i.id == item_id), None)
-        if it and it.pos:
+        if it and self.export_spawns.get(it.id):
+            x, y, _z, _src = self.export_spawns[it.id][0]
+            self.map.focus_world(x, y)
+            self.layer_checks["exports"].setChecked(True)
+        elif it and it.pos:
             self.map.focus_world(*it.pos)
 
     def on_context_menu(self, point):
@@ -520,6 +546,8 @@ class MainWindow(QMainWindow):
         lines.append("")
         lines.append("Collectibles connus (main.scm) : " +
                      ", ".join(f"{k} {len(v)}" for k, v in self.known.items()))
+        lines.append(f"Spawns d'export : {sum(len(v) for v in self.export_spawns.values())} "
+                     f"pour {sum(1 for v in self.export_spawns.values() if v)}/30 véhicules")
         lines.append(f"Positions de tags mémorisées : {sum(1 for p in self.tag_positions if p)}")
         lines.append(f"Dossier des données : {gamefiles.app_dir()}")
 

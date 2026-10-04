@@ -20,6 +20,7 @@ Tu peux aussi lancer à la main :
   - les 50 photos, 50 fers à cheval et 50 huîtres, positions extraites de ton `main.scm` ;
   - les 100 tags (positions relevées dans la mémoire du jeu au premier lancement) ;
   - les 70 sauts uniques ;
+  - les points d'apparition des 30 véhicules de la liste Export/Import, extraits des générateurs de véhicules garés de ton `main.scm` et des fichiers IPL. Clique sur un véhicule de la liste pour aller à son premier point ;
   - les contacts de mission (positions approximatives) ;
   - la position de CJ en direct.
 

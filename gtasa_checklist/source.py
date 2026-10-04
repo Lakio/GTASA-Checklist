@@ -56,6 +56,9 @@ class SourceWorker(QObject):
     @Slot()
     def tick(self):
         try:
+            if self.mode == "save" and not (self.save_path and self.save_path.exists()):
+                # la sauvegarde choisie a disparu : retour à la source automatique
+                self.mode, self.save_path, self._save_key = "auto", None, None
             if self.mode == "auto" and self._tick_memory():
                 return
             self._tick_save()

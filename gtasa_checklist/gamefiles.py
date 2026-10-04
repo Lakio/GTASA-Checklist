@@ -196,6 +196,106 @@ def build_radar_map(game_dir: str, out: Path) -> Path:
     return out
 
 
+# --------------------------------------------------- véhicules garés (spawns)
+
+def vehicle_ids(game_dir: str) -> dict[str, int]:
+    """Nom du modèle (vehicles.ide) -> identifiant."""
+    ids = {}
+    text = (Path(game_dir) / "data" / "vehicles.ide").read_text(encoding="latin-1")
+    for line in text.splitlines():
+        parts = [p.strip() for p in line.split("#")[0].split(",")]
+        if len(parts) > 4 and parts[0].isdigit():
+            ids.setdefault(parts[1].lower(), int(parts[0]))
+    return ids
+
+
+def _scm_params(data: bytes, p: int, count: int) -> list | None:
+    """Lit `count` paramètres typés d'une instruction SCM (None si format inattendu)."""
+    values = []
+    for _ in range(count):
+        t = data[p]
+        if t == 0x01:
+            values.append(struct.unpack_from("<i", data, p + 1)[0]); p += 5
+        elif t in (0x02, 0x03):                                  # variable : valeur inconnue
+            values.append(None); p += 3
+        elif t == 0x04:
+            values.append(struct.unpack_from("<b", data, p + 1)[0]); p += 2
+        elif t == 0x05:
+            values.append(struct.unpack_from("<h", data, p + 1)[0]); p += 3
+        elif t == 0x06:
+            values.append(struct.unpack_from("<f", data, p + 1)[0]); p += 5
+        else:
+            return None
+    return values
+
+
+def extract_car_generators(game_dir: str) -> list[tuple[float, float, float, int, str]]:
+    """Tous les générateurs de véhicules garés : (x, y, z, modèle, source).
+
+    source = "script" (main.scm, opcode 014B : certains ne s'activent qu'à une
+    étape de l'histoire) ou "carte" (sections cars des IPL : toujours actifs).
+    """
+    gens = []
+    data = (Path(game_dir) / "data" / "script" / "main.scm").read_bytes()
+    i = data.find(b"\x4b\x01")
+    while i >= 0:
+        try:
+            v = _scm_params(data, i + 2, 12)
+        except (IndexError, struct.error):
+            v = None
+        if v and all(isinstance(c, float) and abs(c) < 4000 for c in v[:3]) \
+                and isinstance(v[4], int) and 400 <= v[4] <= 611:
+            gens.append((v[0], v[1], v[2], v[4], "script"))
+        i = data.find(b"\x4b\x01", i + 1)
+
+    for ipl in (Path(game_dir) / "data" / "maps").rglob("*.ipl"):
+        in_cars = False
+        for line in ipl.read_text(encoding="latin-1").splitlines():
+            s = line.split("#")[0].strip()
+            if s in ("cars", "end"):
+                in_cars = s == "cars"
+            elif in_cars and s:
+                parts = [p.strip() for p in s.split(",")]
+                try:
+                    gens.append((float(parts[0]), float(parts[1]), float(parts[2]),
+                                 int(parts[4]), "carte"))
+                except (ValueError, IndexError):
+                    pass
+
+    # IPL binaires (« bnry ») rangés dans gta3.img
+    img = Path(game_dir) / "models" / "gta3.img"
+    with open(img, "rb") as f:
+        for name, (offset, size) in _img_entries(img).items():
+            if not name.endswith(".ipl"):
+                continue
+            f.seek(offset)
+            raw = f.read(size)
+            if raw[:4] != b"bnry":
+                continue
+            count, start = struct.unpack_from("<i", raw, 20)[0], struct.unpack_from("<i", raw, 0x3C)[0]
+            for k in range(max(0, count)):
+                if start + 48 * (k + 1) > len(raw):
+                    break
+                x, y, z, _angle, model = struct.unpack_from("<4fi", raw, start + 48 * k)
+                gens.append((x, y, z, model, "carte"))
+    return gens
+
+
+def extract_export_spawns(game_dir: str, models: list[str]) -> dict[str, list]:
+    """Points d'apparition des véhicules demandés : {modèle: [[x, y, z, source], ...]}."""
+    ids = vehicle_ids(game_dir)
+    wanted = {ids[m]: m for m in models if m in ids}
+    out: dict[str, list] = {m: [] for m in models}
+    for x, y, z, model, source in extract_car_generators(game_dir):
+        if model in wanted:
+            spot = [round(x, 1), round(y, 1), round(z, 1), source]
+            if spot not in out[wanted[model]]:
+                out[wanted[model]].append(spot)
+    for spots in out.values():
+        spots.sort(key=lambda s: s[3] != "carte")             # toujours actifs d'abord
+    return out
+
+
 def world_to_map(x: float, y: float, map_size: float) -> tuple[float, float]:
     s = map_size / (2 * WORLD_HALF)
     return (x + WORLD_HALF) * s, (WORLD_HALF - y) * s

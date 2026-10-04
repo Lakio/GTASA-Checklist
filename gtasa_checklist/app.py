@@ -8,13 +8,15 @@ from PySide6.QtGui import QColor, QFont, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QSplashScreen
 
 from . import APP_NAME, gamefiles
+from .catalog import EXPORT_LISTS
 from .ui_main import MainWindow
 
 DATA_VERSION = 1   # à incrémenter si le format des fichiers générés change
 
 
-def prepare_game_data(game_dir: str | None, splash: QSplashScreen | None) -> tuple[str | None, dict]:
-    """Génère (une seule fois) la carte radar et la liste des collectibles."""
+def prepare_game_data(game_dir: str | None,
+                      splash: QSplashScreen | None) -> tuple[str | None, dict, dict]:
+    """Génère (une seule fois) la carte radar, les collectibles et les spawns d'export."""
     def say(text):
         if splash:
             splash.showMessage(text, Qt.AlignBottom | Qt.AlignHCenter, QColor("white"))
@@ -24,6 +26,7 @@ def prepare_game_data(game_dir: str | None, splash: QSplashScreen | None) -> tup
     fresh = meta.get("game_dir") == game_dir and meta.get("version") == DATA_VERSION
     map_path = gamefiles.app_dir() / "radar_map.png"
     known = gamefiles.load_json("collectibles.json", {})
+    spawns = gamefiles.load_json("exports.json", {})
 
     if game_dir and (not fresh or not known):
         say("Lecture des collectibles dans main.scm…")
@@ -32,6 +35,14 @@ def prepare_game_data(game_dir: str | None, splash: QSplashScreen | None) -> tup
             gamefiles.save_json("collectibles.json", known)
         except OSError as exc:
             print("main.scm illisible :", exc, file=sys.stderr)
+    if game_dir and (not fresh or not spawns):
+        say("Recherche des véhicules d'export (main.scm, IPL)…")
+        try:
+            models = [model for vehicles in EXPORT_LISTS for _name, model in vehicles]
+            spawns = gamefiles.extract_export_spawns(game_dir, models)
+            gamefiles.save_json("exports.json", spawns)
+        except (OSError, ValueError) as exc:
+            print("Spawns d'export non générés :", exc, file=sys.stderr)
     if game_dir and (not fresh or not map_path.exists()):
         say("Construction de la carte à partir de gta3.img…")
         try:
@@ -40,7 +51,7 @@ def prepare_game_data(game_dir: str | None, splash: QSplashScreen | None) -> tup
             print("Carte non générée :", exc, file=sys.stderr)
     if game_dir:
         gamefiles.save_json("generated.json", {"game_dir": game_dir, "version": DATA_VERSION})
-    return (str(map_path) if map_path.exists() else None), known
+    return (str(map_path) if map_path.exists() else None), known, spawns
 
 
 def apply_theme(app: QApplication) -> None:
@@ -103,9 +114,9 @@ def main() -> int:
     splash = QSplashScreen(pix)
     splash.setFont(QFont(app.font().family(), 11))
     splash.show()
-    map_path, known = prepare_game_data(game_dir, splash)
+    map_path, known, spawns = prepare_game_data(game_dir, splash)
 
-    win = MainWindow(game_dir, map_path, known)
+    win = MainWindow(game_dir, map_path, known, spawns)
     win.show()
     splash.finish(win)
     return app.exec()

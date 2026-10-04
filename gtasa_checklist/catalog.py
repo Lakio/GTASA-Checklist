@@ -79,6 +79,23 @@ LOC = {
 }
 
 
+# Listes d'export, dans l'ordre des drapeaux $1060..$1069 :
+# (nom affiché, nom du modèle dans data/vehicles.ide)
+EXPORT_LISTS = [
+    [("Buffalo", "buffalo"), ("Sentinel", "sentinel"), ("Infernus", "infernus"),
+     ("Camper", "camper"), ("Admiral", "admiral"), ("Patriot", "patriot"),
+     ("Sanchez", "sanchez"), ("Stretch", "stretch"), ("Feltzer", "feltzer"),
+     ("Remington", "remingtn")],
+    [("Cheetah", "cheetah"), ("Rancher", "rancher"), ("Stallion", "stallion"),
+     ("Tanker", "petro"), ("Comet", "comet"), ("Slamvan", "slamvan"),
+     ("Blista Compact", "blistac"), ("Stafford", "stafford"), ("Sabre", "sabre"),
+     ("FCR-900", "fcr900")],
+    [("Banshee", "banshee"), ("Super GT", "supergt"), ("Journey", "journey"),
+     ("Huntley", "huntley"), ("BF Injection", "bfinject"), ("Blade", "blade"),
+     ("Freeway", "freeway"), ("Mesa", "mesa"), ("ZR-350", "zr350"), ("Euros", "euros")],
+]
+
+
 def _strand(cat, group, var, names, loc, start=1, ids=None):
     """Missions d'un même donneur : la n-ième est finie quand le compteur >= n."""
     out = []
@@ -279,18 +296,11 @@ def build_catalog() -> list[Category]:
 
     # ------------------------------------------------------ Export / Import
     c = Category("exports", "Export / Import")
-    lists = [
-        ["Buffalo", "Sentinel", "Infernus", "Camper", "Admiral",
-         "Patriot", "Sanchez", "Stretch", "Feltzer", "Remington"],
-        ["Cheetah", "Rancher", "Stallion", "Tanker", "Comet",
-         "Slamvan", "Blista Compact", "Stafford", "Sabre", "FCR-900"],
-        ["Banshee", "Super GT", "Journey", "Huntley", "BF Injection",
-         "Blade", "Freeway", "Mesa", "ZR-350", "Euros"],
-    ]
-    for li, names in enumerate(lists):
-        for si, name in enumerate(names):
+    for li, vehicles in enumerate(EXPORT_LISTS):
+        for si, (name, _model) in enumerate(vehicles):
             c.items.append(Item(f"e_{li}_{si}", name, c.id, ("export", li, si), LOC["export"],
-                                group=f"Liste {li + 1}"))
+                                group=f"Liste {li + 1}",
+                                note="Clic : voir où trouver ce véhicule sur la carte."))
     cats.append(c)
 
     # ---------------------------------------------------------- Collectibles
