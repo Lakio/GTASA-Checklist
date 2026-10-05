@@ -4,6 +4,14 @@ Checklist du 100 % de GTA San Andreas (PC) avec une carte interactive. Elle lit 
 
 ## Lancer
 
+### Version .exe (recommandée)
+
+`GTASA_Checklist.exe` est un fichier unique qui fonctionne sans installer Python. Place-le où tu veux et double-clique dessus. Le démarrage prend quelques secondes.
+
+Pour reconstruire l'exe à partir des sources, double-clique sur **`build_exe.bat`**. Le fichier est créé dans `dist\GTASA_Checklist.exe`.
+
+### Depuis les sources
+
 Double-clique sur **`Lancer.bat`**. Au premier lancement, l'environnement Python est créé et les dépendances sont installées. Python 3.10 ou plus récent est requis.
 
 Tu peux aussi lancer à la main :

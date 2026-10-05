@@ -4,12 +4,18 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QPalette, QPixmap
+from PySide6.QtGui import QColor, QFont, QIcon, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QSplashScreen
 
 from . import APP_NAME, gamefiles
 from .catalog import EXPORT_LISTS
 from .ui_main import MainWindow
+
+def resource(rel: str) -> Path:
+    """Fichier fourni avec l'appli (dans l'exe PyInstaller ou à côté des sources)."""
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    return base / rel
+
 
 DATA_VERSION = 1   # à incrémenter si le format des fichiers générés change
 
@@ -93,6 +99,7 @@ def main() -> int:
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
+    app.setWindowIcon(QIcon(str(resource("assets/icon.ico"))))
     apply_theme(app)
 
     game_dir = gamefiles.find_game_dir()
