@@ -106,8 +106,8 @@ class MapView(QGraphicsView):
         self.scene().addItem(self.player)
         self._highlight = QGraphicsEllipseItem(-16, -16, 32, 32)
         self._highlight.setFlag(QGraphicsItem.ItemIgnoresTransformations)
-        hl_pen = QPen(QColor("#ffffff"))
-        hl_pen.setWidthF(3)
+        hl_pen = QPen(QColor("#e8461e"))         # orange sanguine, visible sur le fond clair
+        hl_pen.setWidthF(3.5)
         self._highlight.setPen(hl_pen)
         self._highlight.setZValue(90)
         self._highlight.setVisible(False)
