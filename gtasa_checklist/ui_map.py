@@ -20,6 +20,7 @@ LAYERS = {
     "oysters": ("Huîtres", "#00cec9", 5),
     "stunts": ("Sauts uniques", "#e67e22", 5),
     "exports": ("Véhicules export", "#a569bd", 6),
+    "properties": ("Planques", "#f4f6f7", 6),
 }
 DONE_COLOR = QColor(120, 120, 120)
 

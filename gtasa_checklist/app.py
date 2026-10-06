@@ -8,7 +8,7 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QSplashScreen
 
 from . import APP_NAME, gamefiles
-from .catalog import EXPORT_LISTS
+from .catalog import EXPORT_LISTS, LOC, item_spot_specs
 from .ui_main import MainWindow
 
 def resource(rel: str) -> Path:
@@ -17,7 +17,7 @@ def resource(rel: str) -> Path:
     return base / rel
 
 
-DATA_VERSION = 1   # à incrémenter si le format des fichiers générés change
+DATA_VERSION = 2   # à incrémenter si le format des fichiers générés change
 
 
 def prepare_game_data(game_dir: str | None,
@@ -49,6 +49,14 @@ def prepare_game_data(game_dir: str | None,
             gamefiles.save_json("exports.json", spawns)
         except (OSError, ValueError) as exc:
             print("Spawns d'export non générés :", exc, file=sys.stderr)
+    if game_dir and (not fresh or not gamefiles.load_json("places.json", {})):
+        say("Localisation des activités (main.scm, IPL)…")
+        try:
+            candidates = gamefiles.extract_place_candidates(game_dir)
+            gamefiles.save_json("places.json",
+                                gamefiles.resolve_spots(candidates, item_spot_specs(), LOC))
+        except (OSError, ValueError) as exc:
+            print("Lieux non générés :", exc, file=sys.stderr)
     if game_dir and (not fresh or not map_path.exists()):
         say("Construction de la carte à partir de gta3.img…")
         try:

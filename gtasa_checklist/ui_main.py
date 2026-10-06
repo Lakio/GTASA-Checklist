@@ -43,6 +43,14 @@ class MainWindow(QMainWindow):
                               for si, (_name, model) in enumerate(vehicles)}
         self.cats = build_catalog()
         self.items = all_items(self.cats)
+        # positions de chaque élément : (x, y, exacte) — fichiers du jeu, sinon position du catalogue
+        places = gamefiles.load_json("places.json", {})
+        self.spots: dict[str, list[tuple[float, float, bool]]] = {}
+        for it in self.items:
+            if places.get(it.id):
+                self.spots[it.id] = [(p[0], p[1], bool(p[3])) for p in places[it.id]]
+            elif it.pos:
+                self.spots[it.id] = [(it.pos[0], it.pos[1], not it.approx)]
         self.snap: Snapshot | None = None
         self.coll = CollectState()
         self.auto: dict[str, bool | None] = {}
@@ -252,8 +260,10 @@ class MainWindow(QMainWindow):
                     tip.append("Pas de détection automatique : coche à la main.")
                 if not it.required:
                     tip.append("Ne compte pas pour le 100 %.")
-                if it.pos:
-                    tip.append("Clic : voir sur la carte" + (" (position approximative)" if it.approx else ""))
+                spots = self.spots.get(it.id)
+                if spots:
+                    tip.append("Clic : voir sur la carte"
+                               + ("" if spots[0][2] else " (position approximative)"))
                 node.setToolTip(0, "\n".join(tip))
                 parent.addChild(node)
                 self.item_nodes[it.id] = node
@@ -377,11 +387,27 @@ class MainWindow(QMainWindow):
                 entries.append((x, y, "\n".join(lines), done))
         self.map.set_markers("exports", entries)
 
+        # Planques : calque à part
+        entries = []
+        for it in self.items:
+            if it.category == "properties" and self.spots.get(it.id):
+                x, y, _exact = self.spots[it.id][0]
+                done = self.effective(it)
+                entries.append((x, y, f"{it.name} — {it.group}\n"
+                                      f"{'Achetée' if done else 'À acheter'}\nX {x:.0f}  Y {y:.0f}", done))
+        self.map.set_markers("properties", entries)
+
+        # Missions et activités : un point par lieu, regroupant les éléments au même endroit
         cat_names = {c.id: c.name for c in self.cats}
         by_pos: dict[tuple, list[Item]] = defaultdict(list)
+        exact_at: dict[tuple, bool] = {}
         for it in self.items:
-            if it.pos:
-                by_pos[it.pos].append(it)
+            if it.category == "properties":
+                continue
+            for x, y, exact in self.spots.get(it.id, []):
+                key = (round(x), round(y))
+                by_pos[key].append(it)
+                exact_at[key] = exact_at.get(key, False) or exact
         entries = []
         for pos, its in by_pos.items():
             todo = [it for it in its if not self.effective(it)]
@@ -392,7 +418,7 @@ class MainWindow(QMainWindow):
                              + (f"  ({it.group})" if len(givers) > 1 and it.group else ""))
             if len(its) > 30:
                 lines.append(f"… et {len(its) - 30} autres")
-            if its[0].approx:
+            if not exact_at[pos]:
                 lines.append("(position approximative)")
             entries.append((pos[0], pos[1], " / ".join(givers) + "\n" + "\n".join(lines), not todo))
         self.map.set_markers("places", entries)
@@ -456,8 +482,11 @@ class MainWindow(QMainWindow):
             x, y, _z, _src = self.export_spawns[it.id][0]
             self.map.focus_world(x, y)
             self.layer_checks["exports"].setChecked(True)
-        elif it and it.pos:
-            self.map.focus_world(*it.pos)
+        elif it and self.spots.get(it.id):
+            x, y, _exact = self.spots[it.id][0]
+            self.map.focus_world(x, y)
+            layer = "properties" if it.category == "properties" else "places"
+            self.layer_checks[layer].setChecked(True)
 
     def on_context_menu(self, point):
         node = self.tree.itemAt(point)

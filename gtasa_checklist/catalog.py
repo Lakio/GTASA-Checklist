@@ -76,7 +76,69 @@ LOC = {
     "bmx": (1946, -1371),
     "nrg": (-1574, 76),
     "chiliad": (-2311, -1634),
+    "race_ls": (1770, -1700),
+    "race_sf": (-1920, 280),
+    "race_lv": (1640, 910),
+    "race_air": (1700, 1650),
+    "stadium_ls": (2695, -1704),
+    "stadium_sf": (-2120, -445),
+    "stadium_lv": (1100, 1600),
+    "ammu_market": (1368, -1279),
+    "courier_ls": (1355, -1755),
+    "courier_sf": (-2590, 70),
+    "courier_lv": (1890, 2087),
+    "pimp": (1919, -1789),
+    "taxi_ls": (1480, -1720),
+    "taxi_sf": (-1990, 620),
+    "taxi_lv": (2050, 1300),
+    "station_unity": (1743, -1944),
+    "station_market": (816, -1361),
+    "station_cranberry": (-1942, 138),
+    "station_linden": (2865, 1290),
+    "station_yellowbell": (1433, 2620),
 }
+
+
+def item_spot_specs() -> dict[str, tuple]:
+    """Comment trouver la position exacte de chaque élément dans les fichiers du jeu
+    (voir gamefiles.resolve_spots). Les ancres de LOC servent de repli."""
+    specs = {
+        "v_fire": ("all", "gen:firetruk"),
+        "v_vigilante": ("all", "police"),
+        "v_paramedic": ("all", "gen:ambulan"),
+        "v_taxi": ("approx", ["taxi_ls", "taxi_sf", "taxi_lv"]),
+        "v_pimp": ("near", "gen:broadway", "pimp"),
+        "v_freight": ("approx", ["station_unity", "station_market", "station_cranberry",
+                                 "station_linden", "station_yellowbell"]),
+        "a_courier_ls": ("near", "gen:bmx", "courier_ls"),
+        "a_courier_sf": ("near", "gen:freeway", "courier_sf"),
+        "a_courier_lv": ("near", "gen:faggio", "courier_lv"),
+        "a_trucking": ("near", "blip:truck", "rs_haul"),
+        "a_quarry": ("near", "blip:quarry", "quarry"),
+        "a_zero_rc": ("near", "blip:zero", "zero"),
+        "s_8track": ("near", "blip:stadium", "stadium_ls"),
+        "s_blood": ("near", "blip:stadium", "stadium_sf"),
+        "s_kickstart": ("near", "blip:stadium", "stadium_lv"),
+        "s_dirt": ("near", "blip:stadium", "stadium_lv"),
+        "c_bmx": ("near", "gen:bmx", "bmx"),
+        "c_nrg": ("near", "gen:nrg500", "nrg"),
+        "sc_drive": ("near", "blip:school", "dschool"),
+        "sc_bike": ("near", "blip:school", "bike_school"),
+        "sc_boat": ("near", "blip:school", "boat_school"),
+        "g_ammu": ("near", "blip:ammu", "ammu_market"),
+        "g_ls": ("near", "blip:gym", "gym_ls"),
+        "g_sf": ("near", "blip:gym", "gym_sf"),
+        "g_lv": ("near", "blip:gym", "gym_lv"),
+    }
+    for k in (1, 2, 3):
+        specs[f"c_chiliad{k}"] = ("near", "gen:mtbike", "chiliad")
+    for first, last, anchor in ((1, 6, "race_ls"), (9, 14, "race_sf"),
+                                (15, 18, "race_lv"), (19, 24, "race_air")):
+        for idx in range(first, last + 1):
+            specs[f"r_{idx}"] = ("near", "blip:race", anchor)
+    for flag in range(731, 760):
+        specs[f"p_{flag}"] = ("property", flag)
+    return specs
 
 
 # Listes d'export, dans l'ordre des drapeaux $1060..$1069 :

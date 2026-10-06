@@ -210,13 +210,16 @@ def vehicle_ids(game_dir: str) -> dict[str, int]:
 
 
 def _scm_params(data: bytes, p: int, count: int) -> list | None:
-    """Lit `count` paramètres typés d'une instruction SCM (None si format inattendu)."""
+    """Lit `count` paramètres typés d'une instruction SCM (None si format inattendu).
+    Une variable globale est rendue sous la forme ("g", numéro), une locale par None."""
     values = []
     for _ in range(count):
         t = data[p]
         if t == 0x01:
             values.append(struct.unpack_from("<i", data, p + 1)[0]); p += 5
-        elif t in (0x02, 0x03):                                  # variable : valeur inconnue
+        elif t == 0x02:
+            values.append(("g", struct.unpack_from("<H", data, p + 1)[0] // 4)); p += 3
+        elif t == 0x03:
             values.append(None); p += 3
         elif t == 0x04:
             values.append(struct.unpack_from("<b", data, p + 1)[0]); p += 2
@@ -229,6 +232,40 @@ def _scm_params(data: bytes, p: int, count: int) -> list | None:
     return values
 
 
+class ScmReader:
+    """Recherche d'instructions dans main.scm, avec résolution des variables
+    globales flottantes initialisées par le script ($var = 123.4, opcode 0005)."""
+
+    def __init__(self, main_scm: Path):
+        self.data = main_scm.read_bytes()
+        self.floats: dict[int, float] = {}
+        for v in self.scan(0x0005, 2):
+            if isinstance(v[0], tuple) and isinstance(v[1], float):
+                self.floats.setdefault(v[0][1], v[1])
+
+    def scan(self, opcode: int, count: int):
+        needle = struct.pack("<H", opcode)
+        i = self.data.find(needle)
+        while i >= 0:
+            try:
+                v = _scm_params(self.data, i + 2, count)
+            except (IndexError, struct.error):
+                v = None
+            if v:
+                yield v
+            i = self.data.find(needle, i + 1)
+
+    def value(self, v):
+        return self.floats.get(v[1]) if isinstance(v, tuple) else v
+
+    def xyz(self, v) -> tuple[float, float, float] | None:
+        """Les trois premiers paramètres comme coordonnées (constantes ou globales)."""
+        pt = tuple(self.value(c) for c in v[:3])
+        if all(isinstance(c, float) and abs(c) < 4000 for c in pt):
+            return pt
+        return None
+
+
 def extract_car_generators(game_dir: str) -> list[tuple[float, float, float, int, str]]:
     """Tous les générateurs de véhicules garés : (x, y, z, modèle, source).
 
@@ -236,17 +273,11 @@ def extract_car_generators(game_dir: str) -> list[tuple[float, float, float, int
     étape de l'histoire) ou "carte" (sections cars des IPL : toujours actifs).
     """
     gens = []
-    data = (Path(game_dir) / "data" / "script" / "main.scm").read_bytes()
-    i = data.find(b"\x4b\x01")
-    while i >= 0:
-        try:
-            v = _scm_params(data, i + 2, 12)
-        except (IndexError, struct.error):
-            v = None
-        if v and all(isinstance(c, float) and abs(c) < 4000 for c in v[:3]) \
-                and isinstance(v[4], int) and 400 <= v[4] <= 611:
-            gens.append((v[0], v[1], v[2], v[4], "script"))
-        i = data.find(b"\x4b\x01", i + 1)
+    scm = ScmReader(Path(game_dir) / "data" / "script" / "main.scm")
+    for v in scm.scan(0x014B, 12):                       # create_car_generator
+        pt = scm.xyz(v)
+        if pt and isinstance(v[4], int) and 400 <= v[4] <= 611:
+            gens.append((*pt, v[4], "script"))
 
     for ipl in (Path(game_dir) / "data" / "maps").rglob("*.ipl"):
         in_cars = False
@@ -293,6 +324,76 @@ def extract_export_spawns(game_dir: str, models: list[str]) -> dict[str, list]:
                 out[wanted[model]].append(spot)
     for spots in out.values():
         spots.sort(key=lambda s: s[3] != "carte")             # toujours actifs d'abord
+    return out
+
+
+# ------------------------------------------------------- lieux d'activités
+
+RADAR_SPRITES = {6: "ammu", 11: "quarry", 33: "stadium", 36: "school", 47: "zero",
+                 51: "truck", 53: "race", 54: "gym"}
+PROPERTY_FIRST_FLAG, PROPERTY_FIRST_X = 731, 1527   # $731+n acheté  <->  $1527+n position
+PROPERTY_ARRAY = 32                                   # X : $1524.., Y : +32, Z : +64
+
+
+def extract_place_candidates(game_dir: str) -> dict[str, list[tuple[float, float, float]]]:
+    """Lieux trouvés dans les fichiers du jeu, rangés par type :
+    "blip:<nom>" (icônes radar), "police" (commissariats), "gen:<modèle>"
+    (véhicules garés) et "property:<drapeau>" (planques à acheter)."""
+    scm = ScmReader(Path(game_dir) / "data" / "script" / "main.scm")
+    out: dict[str, list] = {}
+
+    def add(kind, pt):
+        pt = tuple(round(c, 1) for c in pt)
+        if pt not in out.setdefault(kind, []):
+            out[kind].append(pt)
+
+    for opcode in (0x02A7, 0x02A8, 0x04CE, 0x0570):   # icônes radar (contact, coord.)
+        for v in scm.scan(opcode, 5):
+            pt = scm.xyz(v)
+            if pt and v[3] in RADAR_SPRITES:
+                add(f"blip:{RADAR_SPRITES[v[3]]}", pt)
+    for v in scm.scan(0x016D, 5):                       # add_police_restart
+        pt = scm.xyz(v)
+        if pt:
+            add("police", pt)
+    for flag in range(PROPERTY_FIRST_FLAG, PROPERTY_FIRST_FLAG + 29):
+        var = PROPERTY_FIRST_X + flag - PROPERTY_FIRST_FLAG
+        pt = tuple(scm.floats.get(var + k * PROPERTY_ARRAY) for k in range(3))
+        if all(isinstance(c, float) for c in pt):
+            add(f"property:{flag}", pt)
+    names = {i: n for n, i in vehicle_ids(game_dir).items()}
+    for x, y, z, model, _source in extract_car_generators(game_dir):
+        if model in names:
+            add(f"gen:{names[model]}", (x, y, z))
+    return out
+
+
+def resolve_spots(candidates: dict, specs: dict, anchors: dict) -> dict[str, list]:
+    """Position(s) de chaque élément : {id: [[x, y, z, exacte], ...]}.
+
+    Spécifications : ("near", type, ancre) = le lieu de ce type le plus proche
+    de l'ancre approximative ; ("all", type) = tous ; ("property", drapeau) ;
+    ("approx", [ancres]) = positions indicatives seulement."""
+    out = {}
+    for item_id, spec in specs.items():
+        kind = spec[0]
+        if kind == "near":
+            ax, ay = anchors[spec[2]]
+            pts = [p for p in candidates.get(spec[1], [])
+                   if (p[0] - ax) ** 2 + (p[1] - ay) ** 2 < 700 ** 2]
+            if pts:
+                best = min(pts, key=lambda p: (p[0] - ax) ** 2 + (p[1] - ay) ** 2)
+                out[item_id] = [[*best, True]]
+            else:
+                out[item_id] = [[ax, ay, 0.0, False]]
+        elif kind == "all":
+            out[item_id] = [[*p, True] for p in candidates.get(spec[1], [])]
+        elif kind == "property":
+            pts = candidates.get(f"property:{spec[1]}", [])
+            if pts:
+                out[item_id] = [[*pts[0], True]]
+        elif kind == "approx":
+            out[item_id] = [[*anchors[a], 0.0, False] for a in spec[1]]
     return out
 
 

@@ -30,6 +30,8 @@ Tu peux aussi lancer à la main :
   - les 70 sauts uniques ;
   - les points d'apparition des 30 véhicules de la liste Export/Import, extraits des générateurs de véhicules garés de ton `main.scm` et des fichiers IPL. Clique sur un véhicule de la liste pour aller à son premier point ;
   - les contacts de mission (positions approximatives) ;
+  - les activités annexes, positions lues dans ton `main.scm` : missions de véhicule (casernes, hôpitaux, commissariats, Broadway du proxénète), coursiers, camionnage, carrière, départs des courses, stades, défis, écoles, défi de tir Ammu-Nation et salles de sport. Seuls le taxi et le train de marchandises ont des points indicatifs, car ces missions se lancent depuis n'importe quel taxi ou train ;
+  - les 29 planques à acheter (calque « Planques ») ;
   - la position de CJ en direct.
 
   Les éléments terminés apparaissent en gris (option pour les masquer). Molette pour zoomer, glisser pour se déplacer, clic sur un élément de la liste pour le situer.
