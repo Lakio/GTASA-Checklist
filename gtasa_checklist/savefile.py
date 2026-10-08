@@ -8,11 +8,11 @@ import struct
 from datetime import datetime
 from pathlib import Path
 
-from .model import Pickup, Snapshot, StuntJump, Tag
+from .model import Pickup, Snapshot, Tag
 
 BLOCK = b"BLOCK"
 SAVE_SIZE = 0x31800
-B_SIMPLE, B_SCRIPT, B_PICKUPS, B_STATS, B_TAGS, B_USJ = 0, 1, 6, 16, 20, 24
+B_SIMPLE, B_SCRIPT, B_PICKUPS, B_STATS, B_TAGS = 0, 1, 6, 16, 20
 
 
 def _split_blocks(data: bytes) -> list[bytes]:
@@ -75,18 +75,6 @@ def read_save(path: Path) -> Snapshot:
         count = struct.unpack_from("<I", tags, 0)[0]
         if 0 < count <= 150 and len(tags) >= 4 + count:
             snap.tags = [Tag(None, None, None, tags[4 + i]) for i in range(count)]
-
-    if len(blocks) > B_USJ:
-        usj = blocks[B_USJ]
-        count = struct.unpack_from("<I", usj, 0)[0] if len(usj) >= 4 else 0
-        if 0 < count <= 256 and len(usj) >= 4 + count * 0x44:
-            snap.stunts = []
-            for i in range(count):
-                base = 4 + i * 0x44
-                x1, y1, z1, x2, y2, z2 = struct.unpack_from("<6f", usj, base)
-                done, found = usj[base + 0x40], usj[base + 0x41]
-                snap.stunts.append(StuntJump((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2,
-                                             bool(done), bool(found)))
 
     when = datetime.fromtimestamp(path.stat().st_mtime).strftime("%d/%m %H:%M")
     slot = path.stem.replace("GTASAsf", "")

@@ -16,8 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from . import gamefiles
-from .model import (MODEL_HORSESHOE, MODEL_OYSTER, MODEL_SNAPSHOT, Pickup, Snapshot,
-                    StuntJump, Tag)
+from .model import MODEL_HORSESHOE, MODEL_OYSTER, MODEL_SNAPSHOT, Pickup, Snapshot, Tag
 
 PROCESS_NAMES = {"gta_sa.exe", "gta-sa.exe", "gta_sa_compact.exe"}
 
@@ -35,7 +34,6 @@ PED_STRIDE = 0x7C4          # taille d'un emplacement du pool de piétons (CCopP
 NUM_PICKUPS = 620
 PICKUP_SIZE = 0x20
 MAX_TAGS = 150
-STUNT_SIZE = 0x44
 COLLECT_MODELS = {MODEL_SNAPSHOT: "snapshots", MODEL_HORSESHOE: "horseshoes",
                   MODEL_OYSTER: "oysters"}
 
@@ -442,7 +440,6 @@ class GameMemory:
         td = self.addr.get("tag_desc")
         if td:
             snap.tags = self._read_tags(td)
-            snap.stunts = self._read_stunts(td)
 
         anchor = self.addr.get("pickups_anchor")
         if anchor:
@@ -478,43 +475,6 @@ class GameMemory:
                     pos = None
             tags.append(Tag(*(pos or (None, None, None)), alpha))
         return tags
-
-    def _stunt_manager(self, tag_desc: int) -> tuple[int, int, int, int] | None:
-        """CStuntJumpManager est juste avant CTagManager : pointeur du pool, puis
-        le nombre de sauts 0x14 octets plus loin (-0x38/-0x24 en 1.0, -0x20/-0x0C
-        sur la version Rockstar Launcher)."""
-        raw = self.read(tag_desc - 0x80, 0x80)
-        if not raw:
-            return None
-        for off in range(0, 0x80 - 0x18, 4):
-            pool, num = struct.unpack_from("<I", raw, off)[0], struct.unpack_from("<i", raw, off + 0x14)[0]
-            if not (0 < num <= 256 and 0x10000 < pool < 0xFFFF0000):
-                continue
-            header = self.read(pool, 12)
-            if header:
-                storage, slots, capacity = struct.unpack("<IIi", header)
-                if num <= capacity <= 1024 and storage and slots:
-                    return storage, slots, capacity, num
-        return None
-
-    def _read_stunts(self, tag_desc: int) -> list[StuntJump] | None:
-        found = self._stunt_manager(tag_desc)
-        if not found:
-            return None
-        storage, slots, capacity, num = found
-        flags = self.read(slots, capacity)
-        data = self.read(storage, capacity * STUNT_SIZE)
-        if not flags or not data:
-            return None
-        jumps = []
-        for i in range(capacity):
-            if flags[i] & 0x80:
-                continue
-            x1, y1, z1, x2, y2, z2 = struct.unpack_from("<6f", data, i * STUNT_SIZE)
-            done, found = data[i * STUNT_SIZE + 0x40], data[i * STUNT_SIZE + 0x41]
-            jumps.append(StuntJump((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2,
-                                   bool(done), bool(found)))
-        return jumps if len(jumps) == num else None
 
     def _read_pickups(self, anchor: int) -> list[Pickup] | None:
         """Lit une fenêtre couvrant forcément tout le tableau, garde les collectibles."""

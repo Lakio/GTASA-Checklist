@@ -27,7 +27,6 @@ Tu peux aussi lancer à la main :
 - **Carte** : construite à partir des tuiles radar de ton `gta3.img`. Elle affiche :
   - les 50 photos, 50 fers à cheval et 50 huîtres, positions extraites de ton `main.scm` ;
   - les 100 tags (positions relevées dans la mémoire du jeu au premier lancement) ;
-  - les 70 sauts uniques ;
   - les points d'apparition des 30 véhicules de la liste Export/Import, extraits des générateurs de véhicules garés de ton `main.scm` et des fichiers IPL. Clique sur un véhicule de la liste pour aller à son premier point ;
   - les contacts de mission (positions approximatives) ;
   - les activités annexes, positions lues dans ton `main.scm` : missions de véhicule (casernes, hôpitaux, commissariats, Broadway du proxénète), coursiers, camionnage, carrière, départs des courses, stades, défis, écoles, défi de tir Ammu-Nation et salles de sport. Seuls le taxi et le train de marchandises ont des points indicatifs, car ces missions se lancent depuis n'importe quel taxi ou train ;

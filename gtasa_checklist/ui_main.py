@@ -353,12 +353,6 @@ class MainWindow(QMainWindow):
                 tip = f"{COLLECT_LABELS[kind]} n°{i + 1} — {state}\nX {p[0]:.0f}  Y {p[1]:.0f}  Z {p[2]:.0f}"
                 entries.append((p[0], p[1], tip, d))
             self.map.set_markers(kind, entries)
-        # Sauts uniques
-        entries = []
-        for i, s in enumerate((self.snap.stunts if self.snap else None) or []):
-            tip = f"Saut unique n°{i + 1} — {'réussi' if s.done else ('trouvé' if s.found else 'à faire')}"
-            entries.append((s.x, s.y, tip, s.done))
-        self.map.set_markers("stunts", entries)
         # Lieux des missions et activités (regroupés par position)
         # Véhicules d'export : un point par emplacement de spawn
         entries = []
@@ -544,8 +538,7 @@ class MainWindow(QMainWindow):
                          f"Progression : {s.progress_percent}")
             lines.append(f"Pickups collectibles présents : "
                          f"{len(s.pickups) if s.pickups is not None else 'non lus'}")
-            lines.append(f"Tags : {len(s.tags) if s.tags else 'non lus'}   "
-                         f"Sauts : {len(s.stunts) if s.stunts else 'non lus'}")
+            lines.append(f"Tags : {len(s.tags) if s.tags else 'non lus'}")
             lines.append(f"Joueur : {s.player}")
             lines.append("")
             lines.append("Compteurs de missions :")

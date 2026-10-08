@@ -44,15 +44,6 @@ class Tag:
 
 
 @dataclass
-class StuntJump:
-    x: float
-    y: float
-    z: float
-    done: bool
-    found: bool
-
-
-@dataclass
 class Snapshot:
     source: str                                   # "memory" ou "save"
     label: str                                    # texte pour la barre d'état
@@ -62,7 +53,6 @@ class Snapshot:
     pickups: list[Pickup] | None = None           # collectibles encore présents
     pickups_reliable: bool = False                # True si le tableau complet a été lu
     tags: list[Tag] | None = None
-    stunts: list[StuntJump] | None = None
     player: tuple[float, float, float, float] | None = None  # x, y, z, cap (radians)
     timestamp: float = field(default_factory=time.time)
     diagnostics: dict = field(default_factory=dict)
