@@ -96,19 +96,7 @@ def evaluate(rule, snap: Snapshot | None, coll: CollectState) -> bool | None:
         count = coll.counts.get(rule[1])
         return None if count is None else count >= COLLECT_TOTALS[rule[1]]
 
-    if snap is None:
-        return None
-
-    if op == "usj":
-        if snap.stunts is None:
-            return None
-        return len(snap.stunts) > 0 and all(s.done for s in snap.stunts)
-
-    if op == "stat>=":
-        v = snap.stat(rule[1])
-        return None if v is None else v >= rule[2]
-
-    if not snap.has_globals:
+    if snap is None or not snap.has_globals:
         return None
     g = snap.g
 

@@ -13,8 +13,6 @@ Règles (évaluées dans rules.py) :
     ("export", liste, i)   véhicule i de la liste d'export
     ("robberies>=", n)     nombre de braquages de Catalina terminés
     ("collect", kind)      collectibles d'un type tous ramassés
-    ("stat>=", id, v)      statistique du jeu >= v
-    ("usj",)               70 sauts uniques
     ("any", [r, ...]) / ("all", [r, ...])
     None                   pas de détection : à cocher à la main
 """
@@ -31,7 +29,6 @@ class Item:
     pos: tuple[float, float] | None = None  # coordonnées monde (x, y)
     approx: bool = True                      # position du contact approximative
     note: str = ""
-    required: bool = True                    # compte pour le 100 %
     group: str = ""                          # sous-groupe (donneur de mission...)
 
 
@@ -401,29 +398,7 @@ def build_catalog() -> list[Category]:
         (756, "The Clown's Pocket (suite)", "Las Venturas"),
     ]
     for var, name, group in props:
-        c.items.append(Item(f"p_{var}", name, c.id, ("g!=0", var), group=group, required=False))
-    cats.append(c)
-
-    # ------------------------------------------------------------ Optionnel
-    c = Category("optional", "Hors 100 % (bonus)")
-    c.items += [
-        Item("o_usj", "70 sauts uniques (USJ)", c.id, ("usj",), required=False),
-        Item("o_burglar", "Cambrioleur — 10 000 $ volés (sprint infini)", c.id,
-             ("g>=", 1790, 10000), required=False),
-        Item("o_triathlon", "Beat the Cock! (triathlon)", c.id, ("g!=0", 1806), required=False),
-        Item("o_gf_denise", "Copine : Denise à 100 %", c.id, ("stat>=", 252, 100), required=False),
-        Item("o_gf_michelle", "Copine : Michelle à 100 %", c.id, ("stat>=", 253, 100), required=False),
-        Item("o_gf_helena", "Copine : Helena à 100 %", c.id, ("stat>=", 254, 100), required=False),
-        Item("o_gf_barbara", "Copine : Barbara à 100 %", c.id, ("stat>=", 255, 100), required=False),
-        Item("o_gf_katie", "Copine : Katie à 100 %", c.id, ("stat>=", 256, 100), required=False),
-        Item("o_gf_millie", "Copine : Millie à 100 %", c.id, ("stat>=", 257, 100), required=False),
-        Item("o_gold", "Or dans toutes les écoles", c.id, None, required=False),
-        Item("o_turf", "Contrôler les 53 territoires", c.id, None, required=False),
-        Item("o_stats", "Toutes les stats au maximum", c.id, None, required=False),
-        Item("o_clothes", "Acheter tous les vêtements", c.id, None, required=False),
-        Item("o_dance", "Danse : les 3 niveaux", c.id, None, required=False),
-        Item("o_lowrider", "Gagner le Lowrider Challenge", c.id, None, required=False),
-    ]
+        c.items.append(Item(f"p_{var}", name, c.id, ("g!=0", var), group=group))
     cats.append(c)
 
     return cats

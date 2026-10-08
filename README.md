@@ -22,7 +22,7 @@ Tu peux aussi lancer à la main :
 
 ## Ce que fait l'appli
 
-- **Checklist** : missions principales (Los Santos jusqu'à End of the Line), missions de véhicule, missions d'actifs, courses, stades et défis, écoles, Ammu-Nation et salles de sport, export/import, collectibles, planques. Une catégorie « bonus » regroupe ce qui ne compte pas pour le 100 % (sauts uniques, copines, etc.).
+- **Checklist** : missions principales (Los Santos jusqu'à End of the Line), missions de véhicule, missions d'actifs, courses, stades et défis, écoles, Ammu-Nation et salles de sport, export/import, collectibles, planques.
 - **Détection automatique** : chaque élément est coché d'après les données du jeu (colonne « Détecté par » = `jeu`). Tu peux cocher ou décocher à la main (`manuel`). Clic droit pour revenir à la détection automatique.
 - **Carte** : construite à partir des tuiles radar de ton `gta3.img`. Elle affiche :
   - les 50 photos, 50 fers à cheval et 50 huîtres, positions extraites de ton `main.scm` ;

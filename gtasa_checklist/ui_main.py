@@ -111,14 +111,8 @@ class MainWindow(QMainWindow):
         self.chk_hide_done.setChecked(self.settings.get("hide_done", False))
         self.chk_hide_done.toggled.connect(self.apply_filter)
         self.chk_hide_done.toggled.connect(self._save_settings)
-        self.chk_bonus = QCheckBox("Bonus")
-        self.chk_bonus.setToolTip("Afficher aussi ce qui ne compte pas pour le 100 %")
-        self.chk_bonus.setChecked(self.settings.get("show_bonus", True))
-        self.chk_bonus.toggled.connect(self.refresh)
-        self.chk_bonus.toggled.connect(self._save_settings)
         tools.addWidget(self.search, 1)
         tools.addWidget(self.chk_hide_done)
-        tools.addWidget(self.chk_bonus)
         lv.addLayout(tools)
 
         self.tree = QTreeWidget()
@@ -258,8 +252,6 @@ class MainWindow(QMainWindow):
                     tip.append(it.note)
                 if it.rule is None:
                     tip.append("Pas de détection automatique : coche à la main.")
-                if not it.required:
-                    tip.append("Ne compte pas pour le 100 %.")
                 spots = self.spots.get(it.id)
                 if spots:
                     tip.append("Clic : voir sur la carte"
@@ -319,9 +311,8 @@ class MainWindow(QMainWindow):
                     node.setForeground(2, QBrush(green))
                 extra = self._collect_suffix(it)
                 node.setText(0, it.name + extra)
-                if self.chk_bonus.isChecked() or it.required:
-                    total += 1
-                    done += eff
+                total += 1
+                done += eff
             cnode = self.cat_nodes[cat.id]
             cnode.setText(1, f"{done}/{total}")
             cnode.setForeground(1, QBrush(green if total and done == total else grey))
@@ -329,21 +320,18 @@ class MainWindow(QMainWindow):
         self.apply_filter()
 
     def _collect_suffix(self, it: Item) -> str:
-        if not it.rule or it.rule[0] not in ("collect", "usj"):
+        if not it.rule or it.rule[0] != "collect":
             return ""
-        if it.rule[0] == "usj":
-            st = self.snap.stunts if self.snap else None
-            return f"  ({sum(s.done for s in st)}/{len(st)})" if st else ""
         kind = it.rule[1]
         count = self.coll.counts.get(kind)
         return f"  ({count}/{COLLECT_TOTALS[kind]})" if count is not None else ""
 
     def _refresh_header(self):
-        req = [it for it in self.items if it.required]
-        done = sum(self.effective(it) for it in req)
-        pct = 100.0 * done / len(req) if req else 0
-        self.lbl_total.setText(f"Checklist 100 % : {done}/{len(req)}")
-        self.bar_total.setRange(0, len(req))
+        total = len(self.items)
+        done = sum(self.effective(it) for it in self.items)
+        pct = 100.0 * done / total if total else 0
+        self.lbl_total.setText(f"Checklist 100 % : {done}/{total}")
+        self.bar_total.setRange(0, total)
         self.bar_total.setValue(done)
         self.bar_total.setFormat(f"{pct:.1f} %")
         game_pct = self.snap.progress_percent if self.snap else None
@@ -436,7 +424,6 @@ class MainWindow(QMainWindow):
     def apply_filter(self):
         text = self.search.text().strip().lower()
         hide_done = self.chk_hide_done.isChecked()
-        show_bonus = self.chk_bonus.isChecked()
         by_id = {it.id: it for it in self.items}
         for cat in self.cats:
             cnode = self.cat_nodes[cat.id]
@@ -449,8 +436,7 @@ class MainWindow(QMainWindow):
                     it = by_id.get(node.data(0, ROLE_ITEM))
                     if not it:
                         continue
-                    visible = ((show_bonus or it.required)
-                               and not (hide_done and self.effective(it))
+                    visible = (not (hide_done and self.effective(it))
                                and (not text or text in it.name.lower()
                                     or text in it.group.lower() or text in cat.name.lower()))
                     node.setHidden(not visible)
@@ -606,7 +592,6 @@ class MainWindow(QMainWindow):
 
     def _save_settings(self):
         self.settings["hide_done"] = self.chk_hide_done.isChecked()
-        self.settings["show_bonus"] = self.chk_bonus.isChecked()
         self.settings["map_show_done"] = self.chk_map_done.isChecked()
         self.settings["hidden_layers"] = [k for k, cb in self.layer_checks.items() if not cb.isChecked()]
         stored = gamefiles.load_json("settings.json", {})
